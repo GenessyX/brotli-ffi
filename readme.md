@@ -1,0 +1,1 @@
+1. Bug: segmentation fault on buffer_size power of 2.

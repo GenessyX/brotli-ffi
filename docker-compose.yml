@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  luajit:
+    build: .
+    volumes:
+      - ./:/etc/code
+    command: tail -f /dev/null
+    privileged: true
+    
