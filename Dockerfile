@@ -11,6 +11,12 @@ RUN mkdir -p /etc/deps/brotli/out && \
     cmake --build . --config Release --target install
 RUN mv /etc/deps/brotli/out/installed/lib/*.so /usr/local/lib
 RUN ln -sf luajit-2.1.0-beta3 /usr/local/bin/luajit
+RUN wget https://luarocks.org/releases/luarocks-3.8.0.tar.gz
+RUN tar zxpf luarocks-3.8.0.tar.gz
+RUN cd luarocks-3.8.0 && \
+    ./configure --with-lua-include=/usr/local/include && \
+    make && \
+    make install
 
 WORKDIR /etc/code
 ENTRYPOINT [ "/bin/sh" ]
