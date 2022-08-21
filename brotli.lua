@@ -4,78 +4,24 @@ local ffi_new = ffi.new
 local ffi_typeof = ffi.typeof
 local bit = require "bit"
 local rshift = bit.rshift
-
-ffi.cdef [[
-void free(void *ptr);
-
-typedef enum BrotliEncoderMode {
-    BROTLI_MODE_GENERIC = 0,
-    BROTLI_MODE_TEXT = 1,
-    BROTLI_MODE_FONT = 2
-} BrotliEncoderMode;
-
-typedef enum BrotliEncoderOperation {
-    BROTLI_OPERATION_PROCESS = 0,
-    BROTLI_OPERATION_FLUSH = 1,
-    BROTLI_OPERATION_FINISH = 2,
-    BROTLI_OPERATION_EMIT_METADATA = 3
-} BrotliEncoderOperation;
-
-typedef enum BrotliEncoderParameter {
-    BROTLI_PARAM_MODE = 0,
-    BROTLI_PARAM_QUALITY = 1,
-    BROTLI_PARAM_LGWIN = 2,
-    BROTLI_PARAM_LGBLOCK = 3,
-    BROTLI_PARAM_DISABLE_LITERAL_CONTEXT_MODELING = 4,
-    BROTLI_PARAM_SIZE_HINT = 5
-} BrotliEncoderParameter;
-
-typedef void* (*brotli_alloc_func)(void* opaque, size_t size);
-typedef void (*brotli_free_func)(void* opaque, void* address);
-
-typedef struct BrotliEncoderStateStruct BrotliEncoderState;
-
-BrotliEncoderState* BrotliEncoderCreateInstance(
-    brotli_alloc_func alloc_func, brotli_free_func free_func, void* opaque);
-
-int BrotliEncoderSetParameter(
-    BrotliEncoderState* state, BrotliEncoderParameter param, uint32_t value);
-
-int BrotliEncoderCompressStream(
-    BrotliEncoderState* state, BrotliEncoderOperation op, size_t* available_in,
-    const uint8_t** next_in, size_t* available_out, uint8_t** next_out,
-    size_t* total_out);
-
-size_t BrotliEncoderMaxCompressedSize(size_t input_size);
-
-int BrotliEncoderCompress(
-    int quality, int lgwin, BrotliEncoderMode mode, 
-    size_t input_size, const uint8_t input_buffer[],
-    size_t* encoded_size, uint8_t encoded_buffer[]);
-
-int BrotliEncoderIsFinished(BrotliEncoderState* state);
-
-int BrotliEncoderHasMoreOutput(BrotliEncoderState* state);
-
-void BrotliEncoderDestroyInstance(BrotliEncoderState* state);
-
-uint32_t BrotliEncoderVersion(void);
-]]
+require "brotli_bindings"
+local brotlienc = ffi.load("brotlienc")
+local brotlidec = ffi.load("brotlidec")
 
 local arr_uint8_t = ffi_typeof("uint8_t[?]")
 local pptr_uint8_t = ffi_typeof("uint8_t*[1]")
 local pptr_const_uint8_t = ffi_typeof("const uint8_t*[1]")
 local ptr_size_t = ffi_typeof("size_t[1]")
 
-local _BUFFER_SIZE = 65536
 local BROTLI_TRUE = 1
 local BROTLI_FALSE = 0
+local BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT = 2
+local BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT = 3
 local BROTLI_DEFAULT_QUALITY = 11
 local BROTLI_DEFAULT_WINDOW = 22
 local BROTLI_DEFAULT_MODE = C.BROTLI_MODE_GENERIC
 local BROTLI_DEFAULT_LGBLOCK = 0
 
-local brotlienc = ffi.load("brotlienc")
 
 local _M = {}
 _M.__index = _M
@@ -176,6 +122,92 @@ function _M:compress(data)
     return compressed_data
 end
 
+
+local decompressor = {}
+decompressor.__index = decompressor
+function decompressor:new(dictionary)
+    local _dictionary, _dictionary_size
+    local dec = brotlidec.BrotliDecoderCreateInstance(nil, nil, nil)
+    if not dec then
+        error("Could not instantiate brotlidecoder")
+    end
+    dec = ffi.gc(dec, brotlidec.BrotliDecoderDestroyInstance)
+
+    if dictionary then
+        _dictionary_size = #_dictionary
+        _dictionary = ffi_new(arr_uint8_t, _dictionary_size, dictionary)
+        brotlidec.BrotliDecoderSetCustomDictionary(
+            dec,
+            _dictionary_size,
+            _dictionary
+        )
+    end
+
+    local _decompressor = { _decoder = dec, _dictionary = _dictionary, _dictionary_size = _dictionary_size }
+    setmetatable(_decompressor, self)
+    return _decompressor
+end
+
+function decompressor:decompress(data)
+    local chunks = ""
+    local available_in = ffi_new(ptr_size_t, #data)
+    local input_buffer = ffi_new(arr_uint8_t, #data, data)
+    local next_in = ffi_new(pptr_const_uint8_t, input_buffer)
+
+    while true do
+        local buffer_size = 5 * #data
+        local available_out = ffi_new(ptr_size_t, buffer_size)
+        local output_buffer = ffi_new(arr_uint8_t, buffer_size)
+        local next_out = ffi_new(pptr_uint8_t, output_buffer)
+        local rc = brotlidec.BrotliDecoderDecompressStream(
+            self._decoder,
+            available_in,
+            next_in,
+            available_out,
+            next_out,
+            nil
+        )
+        if rc == BROTLI_FALSE then
+            local error_code = brotlidec.BrotliDecoderGetErrorCode(self._decoder)
+            local error_message = brotlidec.BrotliDecoderGetErrorString(error_code)
+            error("Decompression error: " .. ffi.string(error_message))
+        end
+        local chunk = ffi.string(output_buffer, buffer_size - available_out[0])
+        chunks = chunks .. chunk
+        if rc == BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT then
+            assert(available_in[0] == 0)
+            break
+        elseif rc == BROTLI_TRUE then
+            break
+        else
+            assert(rc == BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT)
+        end
+    end
+    
+    return chunks
+end
+
+function decompressor:is_finished()
+    return brotlidec.BrotliDecoderIsFinished(self._decoder) == BROTLI_TRUE
+end
+
+function decompressor:finish()
+    assert(brotlidec.BrotliDecoderHasMoreOutput(self._decoder) == false)
+    if not self:is_finished() then
+        error("Decompression error: incomplete compressed stream.")
+    end
+    return ""
+end
+
+function _M:decompress(data)
+    local d = decompressor:new()
+    local decompressed_data = decompressor:decompress(data)
+    d:finish()
+    return decompressed_data
+end
+
+
+_M.decompressor = decompressor
 _M.compressor = compressor
 
 return _M

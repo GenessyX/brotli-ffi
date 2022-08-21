@@ -52,5 +52,26 @@ end
 o:write(result)
 o:close()
 
-os.execute("sleep 5")
-os.execute("sleep 5")
+-- print(brotli:decompress(result))
+-- os.execute("sleep 5")
+
+local o = io.open(f_name .. ".br", "rb")
+local decompressor = brotli.decompressor:new()
+result = ""
+while true do
+    local compressed_chunk = o:read(buffer_size)
+    local chunk
+    if compressed_chunk then
+        chunk = decompressor:decompress(compressed_chunk)
+    else
+        chunk = decompressor:finish()
+    end
+    
+    result = result .. chunk
+    
+    if not compressed_chunk then
+        break
+    end
+end
+o:close()
+print(result)
