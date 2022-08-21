@@ -1,8 +1,8 @@
 package = "brotli-ffi"
-version = "0.3-0"
+version = "0.3-1"
 source = {
    url = "git://github.com/GenessyX/brotli-ffi",
-   tag = "v0.3-0"
+   tag = "v0.3-1"
 }
 description = {
    summary = "Luajit ffi library for brotli compression.",
