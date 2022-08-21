@@ -151,7 +151,7 @@ end
 function decompressor:decompress(data)
     local chunks = ""
     local available_in = ffi_new(ptr_size_t, #data)
-    local input_buffer = ffi_new(arr_uint8_t, #data, data)
+    local input_buffer = ffi_new(arr_uint8_t, #data + 1, data)
     local next_in = ffi_new(pptr_const_uint8_t, input_buffer)
 
     while true do
