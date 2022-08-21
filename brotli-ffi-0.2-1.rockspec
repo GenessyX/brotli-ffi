@@ -10,7 +10,7 @@ description = {
         This is luajit ffi bindings for brotli compression
         with support of streams.
    ]],
-   homepage = "https://github.com/GenessyX/luajit-brotli",
+   homepage = "https://github.com/GenessyX/brotli-ffi",
    license = "MIT/X11"
 }
 dependencies = {
