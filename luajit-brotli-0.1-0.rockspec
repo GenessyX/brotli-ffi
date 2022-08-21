@@ -2,7 +2,7 @@ package = "luajit-brotli"
 version = "0.1-0"
 source = {
    url = "git://github.com/GenessyX/luajit-brotli",
-   tag = "v0.1-0"
+   tag = "v0.2.1"
 }
 description = {
    summary = "Luajit ffi library for brotli compression.",
