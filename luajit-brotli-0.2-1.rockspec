@@ -1,5 +1,5 @@
 package = "luajit-brotli"
-version = "0.1-0"
+version = "0.2-1"
 source = {
    url = "git://github.com/GenessyX/luajit-brotli",
    tag = "v0.2.1"
