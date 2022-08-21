@@ -1,7 +1,7 @@
 local brotli = require "brotli"
 local bit = require "bit"
 
-local buffer_size = 2 ^ 16 + 1
+local buffer_size = 2 ^ 16
 local f_name = "test.css"
 
 local f = io.open(f_name)
@@ -15,7 +15,7 @@ end
 
 local contents = string.rep("0", f_size)
 
-local compressor = brotli.compressor:new({ quality = 11})
+local compressor = brotli.compressor:new({ quality = 11 })
 local result = ""
 local cursor = 0
 local i = 1
@@ -74,4 +74,4 @@ while true do
     end
 end
 o:close()
-print(result)
+print(#result)

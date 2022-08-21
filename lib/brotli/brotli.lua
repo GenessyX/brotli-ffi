@@ -57,7 +57,7 @@ function compressor:_compress(data, operation)
     local output_buffer = ffi_new(arr_uint8_t, available_out[0])
     local ptr_to_output_buffer = ffi_new(pptr_uint8_t, output_buffer)
     local input_size = ffi_new(ptr_size_t, #data)
-    local input_buffer = ffi_new(arr_uint8_t, #data, data)
+    local input_buffer = ffi_new(arr_uint8_t, #data + 1, data)
     local ptr_to_input_buffer = ffi_new(pptr_const_uint8_t, input_buffer)
     local rc = brotlienc.BrotliEncoderCompressStream(
         self._encoder,
