@@ -1,6 +1,6 @@
 Name
 ===
-brotli-ffi - Google [Brotli](https://github.com/google/brotli) ffi bounding
+brotli-ffi - Google [Brotli](https://github.com/google/brotli) ffi bindings for Lua. 
 
 Installation
 ===
