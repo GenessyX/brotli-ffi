@@ -169,7 +169,7 @@ function decompressor:decompress(data)
         )
         if rc == BROTLI_FALSE then
             local error_code = brotlidec.BrotliDecoderGetErrorCode(self._decoder)
-            local error_message = brotlidec.BrotliDecoderGetErrorString(error_code)
+            local error_message = brotlidec.BrotliDecoderErrorString(error_code)
             error("Decompression error: " .. ffi.string(error_message))
         end
         local chunk = ffi.string(output_buffer, buffer_size - available_out[0])
